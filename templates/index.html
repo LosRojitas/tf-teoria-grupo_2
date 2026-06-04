@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Analizador Léxico - Minicompilador de Reglas de Negocio para Tienda Online de Tecnología">
+    <title>Analizador Léxico · Minicompilador</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+
+<div class="app-container">
+
+    <!-- ======================== HEADER ======================== -->
+    <header class="header" id="app-header">
+        <div class="header-icon">⚡</div>
+        <h1>Analizador Léxico</h1>
+        <p>Minicompilador de Reglas de Negocio — Tienda Online de Tecnología</p>
+        <span class="badge">Fase 1 · Lexer</span>
+    </header>
+
+    <!-- ======================== WORKSPACE ======================== -->
+    <main class="workspace" id="workspace">
+
+        <!-- ===== EDITOR PANEL (Left) ===== -->
+        <section class="panel" id="editor-panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <span class="dot green"></span>
+                    Editor de Código
+                </div>
+                <span style="font-size:0.75rem; color:var(--text-muted); font-family:'JetBrains Mono',monospace;">source.rule</span>
+            </div>
+
+            <div class="editor-wrapper">
+                <div class="line-numbers" id="line-numbers">1</div>
+                <textarea
+                    class="code-input"
+                    id="code-input"
+                    spellcheck="false"
+                    autocomplete="off"
+                    autocorrect="off"
+                    autocapitalize="off"
+                    placeholder="// Escribe tus reglas de negocio aquí...&#10;// Ejemplo:&#10;SI precio > 1000.50 ENTONCES&#10;    descuento = 15;"
+                ></textarea>
+            </div>
+
+            <div class="example-actions">
+                <button class="btn btn-example btn-example-valid" id="btn-example-valid" type="button">
+                    ✔ Ejemplo Válido
+                </button>
+                <button class="btn btn-example btn-example-invalid" id="btn-example-invalid" type="button">
+                    ✖ Ejemplo Inválido
+                </button>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-primary" id="btn-analyze" type="button">
+                    <span class="btn-text">▶ Analizar Código</span>
+                    <span class="spinner"></span>
+                </button>
+                <button class="btn btn-secondary" id="btn-clear" type="button">
+                    ✕ Limpiar
+                </button>
+            </div>
+        </section>
+
+        <!-- ===== RESULTS PANEL (Right) ===== -->
+        <section class="panel" id="results-panel">
+            <div class="panel-header">
+                <div class="panel-title">
+                    <span class="dot blue"></span>
+                    Resultados
+                </div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="tab-nav" id="tab-nav">
+                <button class="tab-btn active" id="tab-tokens" data-tab="tokens" type="button">
+                    📋 Tokens Identificados
+                </button>
+                <button class="tab-btn" id="tab-reference" data-tab="reference" type="button">
+                    📖 Referencia de Tokens
+                </button>
+            </div>
+
+            <!-- Tab: Tokens Identificados -->
+            <div class="tab-content active" id="tab-content-tokens">
+                <div class="stats-bar" id="stats-bar" style="display:none;">
+                    <div class="stat-item">
+                        <span>Tokens:</span>
+                        <span class="stat-value" id="stat-tokens">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Errores:</span>
+                        <span class="stat-value" id="stat-errors">0</span>
+                    </div>
+                </div>
+
+                <div class="results-body" id="results-body">
+                    <div class="empty-state" id="empty-state">
+                        <div class="empty-icon">🔍</div>
+                        <p>Escribe código fuente en el editor y presiona <strong>Analizar Código</strong> para ver los tokens.</p>
+                    </div>
+                    <table class="token-table" id="token-table" style="display:none;">
+                        <thead>
+                            <tr>
+                                <th style="width:35%;">Token</th>
+                                <th style="width:40%;">Lexema</th>
+                                <th style="width:25%; text-align:center;">Línea</th>
+                            </tr>
+                        </thead>
+                        <tbody id="token-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab: Referencia de Tokens -->
+            <div class="tab-content" id="tab-content-reference">
+                <div class="results-body">
+                    <table class="token-table reference-table">
+                        <thead>
+                            <tr>
+                                <th style="width:22%;">Token</th>
+                                <th style="width:28%;">Categoría</th>
+                                <th style="width:25%;">Patrón</th>
+                                <th style="width:25%;">Ejemplo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td><span class="token-badge identifier">ID</span></td><td class="ref-category">Literal</td><td class="ref-pattern">[a-zA-Z_]\w*</td><td class="ref-example">precio, stock_total</td></tr>
+                            <tr><td><span class="token-badge literal">NUM_INT</span></td><td class="ref-category">Literal</td><td class="ref-pattern">\d+</td><td class="ref-example">42, 1000</td></tr>
+                            <tr><td><span class="token-badge literal">NUM_FLOAT</span></td><td class="ref-category">Literal</td><td class="ref-pattern">\d+\.\d+</td><td class="ref-example">3.14, 99.99</td></tr>
+                            <tr><td><span class="token-badge literal">STR_LIT</span></td><td class="ref-category">Literal</td><td class="ref-pattern">"..." o '...'</td><td class="ref-example">"laptop", 'Apple'</td></tr>
+                            <tr><td><span class="token-badge literal">BOOL_LIT</span></td><td class="ref-category">Literal</td><td class="ref-pattern">true | false</td><td class="ref-example">true, false</td></tr>
+                            <tr class="ref-separator"><td colspan="4"></td></tr>
+                            <tr><td><span class="token-badge relational">EQ</span></td><td class="ref-category">Relacional</td><td class="ref-pattern">==</td><td class="ref-example">x == 10</td></tr>
+                            <tr><td><span class="token-badge relational">NEQ</span></td><td class="ref-category">Relacional</td><td class="ref-pattern">!=</td><td class="ref-example">x != 0</td></tr>
+                            <tr><td><span class="token-badge relational">LT</span></td><td class="ref-category">Relacional</td><td class="ref-pattern">&lt;</td><td class="ref-example">a &lt; b</td></tr>
+                            <tr><td><span class="token-badge relational">GT</span></td><td class="ref-category">Relacional</td><td class="ref-pattern">&gt;</td><td class="ref-example">a &gt; b</td></tr>
+                            <tr><td><span class="token-badge relational">LTE</span></td><td class="ref-category">Relacional</td><td class="ref-pattern">&lt;=</td><td class="ref-example">x &lt;= 100</td></tr>
+                            <tr><td><span class="token-badge relational">GTE</span></td><td class="ref-category">Relacional</td><td class="ref-pattern">&gt;=</td><td class="ref-example">stock &gt;= 5</td></tr>
+                            <tr class="ref-separator"><td colspan="4"></td></tr>
+                            <tr><td><span class="token-badge logical">AND</span></td><td class="ref-category">Lógico</td><td class="ref-pattern">Y | &&</td><td class="ref-example">a Y b, a && b</td></tr>
+                            <tr><td><span class="token-badge logical">OR</span></td><td class="ref-category">Lógico</td><td class="ref-pattern">O | ||</td><td class="ref-example">a O b, a || b</td></tr>
+                            <tr><td><span class="token-badge logical">NOT</span></td><td class="ref-category">Lógico</td><td class="ref-pattern">NO | !</td><td class="ref-example">NO activo, !x</td></tr>
+                            <tr class="ref-separator"><td colspan="4"></td></tr>
+                            <tr><td><span class="token-badge assign">ASSIGN</span></td><td class="ref-category">Asignación</td><td class="ref-pattern">=</td><td class="ref-example">x = 5</td></tr>
+                            <tr><td><span class="token-badge arithmetic">PLUS</span></td><td class="ref-category">Aritmético</td><td class="ref-pattern">+</td><td class="ref-example">a + b</td></tr>
+                            <tr><td><span class="token-badge arithmetic">MINUS</span></td><td class="ref-category">Aritmético</td><td class="ref-pattern">-</td><td class="ref-example">a - b</td></tr>
+                            <tr><td><span class="token-badge arithmetic">MULT</span></td><td class="ref-category">Aritmético</td><td class="ref-pattern">*</td><td class="ref-example">a * b</td></tr>
+                            <tr><td><span class="token-badge arithmetic">DIV</span></td><td class="ref-category">Aritmético</td><td class="ref-pattern">/</td><td class="ref-example">a / b</td></tr>
+                            <tr class="ref-separator"><td colspan="4"></td></tr>
+                            <tr><td><span class="token-badge punctuation">L_PAREN</span></td><td class="ref-category">Puntuación</td><td class="ref-pattern">(</td><td class="ref-example">(a + b)</td></tr>
+                            <tr><td><span class="token-badge punctuation">R_PAREN</span></td><td class="ref-category">Puntuación</td><td class="ref-pattern">)</td><td class="ref-example">(a + b)</td></tr>
+                            <tr><td><span class="token-badge punctuation">SEMICOLON</span></td><td class="ref-category">Puntuación</td><td class="ref-pattern">;</td><td class="ref-example">x = 5;</td></tr>
+                            <tr class="ref-separator"><td colspan="4"></td></tr>
+                            <tr><td><span class="token-badge keyword">IF</span></td><td class="ref-category">Reservada</td><td class="ref-pattern">SI | si</td><td class="ref-example">SI precio > 100</td></tr>
+                            <tr><td><span class="token-badge keyword">THEN</span></td><td class="ref-category">Reservada</td><td class="ref-pattern">ENTONCES | entonces</td><td class="ref-example">ENTONCES descuento = 10</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ======================== ERROR CONSOLE ======================== -->
+    <section class="console-panel" id="console-panel">
+        <div class="panel-header">
+            <div class="panel-title">
+                <span class="dot red"></span>
+                Consola de Errores Léxicos
+            </div>
+        </div>
+        <div class="console-body" id="console-body">
+            <div class="console-empty" id="console-empty">
+                <span>✦</span> Esperando análisis...
+            </div>
+        </div>
+    </section>
+
+</div>
+
+<!-- ======================== JAVASCRIPT ======================== -->
+<script>
+(function() {
+    'use strict';
+
+    // --- DOM Elements ---
+    const codeInput       = document.getElementById('code-input');
+    const lineNumbers     = document.getElementById('line-numbers');
+    const btnAnalyze      = document.getElementById('btn-analyze');
+    const btnClear        = document.getElementById('btn-clear');
+    const btnExampleValid = document.getElementById('btn-example-valid');
+    const btnExampleInvalid = document.getElementById('btn-example-invalid');
+    const statsBar        = document.getElementById('stats-bar');
+    const statTokens      = document.getElementById('stat-tokens');
+    const statErrors      = document.getElementById('stat-errors');
+    const emptyState      = document.getElementById('empty-state');
+    const tokenTable      = document.getElementById('token-table');
+    const tokenTbody      = document.getElementById('token-tbody');
+    const consoleBody     = document.getElementById('console-body');
+    const consoleEmpty    = document.getElementById('console-empty');
+    const editorPanel     = document.getElementById('editor-panel');
+    const tabBtns         = document.querySelectorAll('.tab-btn');
+    const tabContents     = document.querySelectorAll('.tab-content');
+
+    // --- Code Examples ---
+    const EXAMPLE_VALID =
+`SI precio > 1000.50 Y stock >= 10 ENTONCES
+    descuento = 15;
+SI categoria == "laptop" O marca == 'Apple' ENTONCES
+    envio_gratis = true;
+SI (cantidad * precio_unitario) >= 5000 ENTONCES
+    cupon = "VIP_DESCUENTO";
+SI NO agotado Y visible == true ENTONCES
+    mostrar = 1;`;
+
+    const EXAMPLE_INVALID =
+`SI precio > 1000.50 ENTONCES
+    descuento = 15%;
+    email = usuario@tienda;
+    total = precio # impuesto;
+SI stock >= 0 ENTONCES
+    estado = "disponible";
+    ganancia = venta ^ costo;
+    codigo = ABC~123;`;
+
+    // --- Token Category Map for badge coloring ---
+    const TOKEN_CATEGORIES = {
+        'ID':        'identifier',
+        'NUM_INT':   'literal',
+        'NUM_FLOAT': 'literal',
+        'STR_LIT':   'literal',
+        'BOOL_LIT':  'literal',
+        'EQ':        'relational',
+        'NEQ':       'relational',
+        'LT':        'relational',
+        'GT':        'relational',
+        'LTE':       'relational',
+        'GTE':       'relational',
+        'AND':       'logical',
+        'OR':        'logical',
+        'NOT':       'logical',
+        'ASSIGN':    'assign',
+        'PLUS':      'arithmetic',
+        'MINUS':     'arithmetic',
+        'MULT':      'arithmetic',
+        'DIV':       'arithmetic',
+        'L_PAREN':   'punctuation',
+        'R_PAREN':   'punctuation',
+        'SEMICOLON': 'punctuation',
+        'IF':        'keyword',
+        'THEN':      'keyword'
+    };
+
+    // --- Tab Navigation ---
+    tabBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var tabId = this.dataset.tab;
+
+            // Update active tab button
+            tabBtns.forEach(function(b) { b.classList.remove('active'); });
+            this.classList.add('active');
+
+            // Show the selected tab content
+            tabContents.forEach(function(tc) { tc.classList.remove('active'); });
+            document.getElementById('tab-content-' + tabId).classList.add('active');
+        });
+    });
+
+    // --- Update Line Numbers ---
+    function updateLineNumbers() {
+        const lines = codeInput.value.split('\n').length;
+        let html = '';
+        for (let i = 1; i <= lines; i++) {
+            html += i + '\n';
+        }
+        lineNumbers.textContent = html;
+    }
+
+    // Sync scroll between textarea and line numbers
+    codeInput.addEventListener('scroll', function() {
+        lineNumbers.scrollTop = codeInput.scrollTop;
+    });
+
+    codeInput.addEventListener('input', updateLineNumbers);
+    codeInput.addEventListener('keydown', function(e) {
+        // Allow Tab key to insert spaces
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const start = this.selectionStart;
+            const end = this.selectionEnd;
+            this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+            this.selectionStart = this.selectionEnd = start + 4;
+            updateLineNumbers();
+        }
+    });
+
+    // --- Escape HTML to prevent XSS ---
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // --- Switch to Tokens tab ---
+    function switchToTokensTab() {
+        tabBtns.forEach(function(b) { b.classList.remove('active'); });
+        document.getElementById('tab-tokens').classList.add('active');
+        tabContents.forEach(function(tc) { tc.classList.remove('active'); });
+        document.getElementById('tab-content-tokens').classList.add('active');
+    }
+
+    // --- Render Token Table ---
+    function renderTokens(tokens) {
+        tokenTbody.innerHTML = '';
+
+        if (tokens.length === 0) {
+            emptyState.style.display = 'flex';
+            tokenTable.style.display = 'none';
+            return;
+        }
+
+        emptyState.style.display = 'none';
+        tokenTable.style.display = 'table';
+
+        tokens.forEach(function(tk, index) {
+            const tr = document.createElement('tr');
+            tr.style.animationDelay = (index * 0.03) + 's';
+
+            const category = TOKEN_CATEGORIES[tk.token] || 'identifier';
+
+            tr.innerHTML =
+                '<td><span class="token-badge ' + category + '">' + escapeHtml(tk.token) + '</span></td>' +
+                '<td class="lexema-cell">' + escapeHtml(tk.lexema) + '</td>' +
+                '<td class="line-cell">' + tk.linea + '</td>';
+
+            tokenTbody.appendChild(tr);
+        });
+    }
+
+    // --- Render Errors ---
+    function renderErrors(errors) {
+        consoleBody.innerHTML = '';
+
+        if (errors.length === 0) {
+            consoleBody.innerHTML =
+                '<div class="console-success">' +
+                    '<span>✔</span> Análisis completado sin errores léxicos.' +
+                '</div>';
+            return;
+        }
+
+        errors.forEach(function(err, index) {
+            const div = document.createElement('div');
+            div.className = 'error-line';
+            div.style.animationDelay = (index * 0.05) + 's';
+
+            div.innerHTML =
+                '<span class="error-icon">✖</span>' +
+                '<span>' +
+                    escapeHtml(err.mensaje) +
+                    '<span class="error-location"> [Línea ' + err.linea + ', Col ' + err.columna + ']</span>' +
+                '</span>';
+
+            consoleBody.appendChild(div);
+        });
+    }
+
+    // --- Update Stats ---
+    function updateStats(totalTokens, totalErrors) {
+        statsBar.style.display = 'flex';
+        statTokens.textContent = totalTokens;
+        statErrors.textContent = totalErrors;
+        statErrors.className = 'stat-value' + (totalErrors > 0 ? ' has-errors' : '');
+    }
+
+    // --- Analyze Code ---
+    async function analyzeCode() {
+        const code = codeInput.value.trim();
+
+        if (!code) {
+            renderTokens([]);
+            consoleBody.innerHTML =
+                '<div class="console-empty"><span>⚠</span> No hay código fuente para analizar.</div>';
+            statsBar.style.display = 'none';
+            return;
+        }
+
+        // Switch to tokens tab to show results
+        switchToTokensTab();
+
+        // Set loading state
+        btnAnalyze.classList.add('loading');
+        btnAnalyze.disabled = true;
+        editorPanel.classList.add('analyzing');
+
+        try {
+            const response = await fetch('/api/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ code: codeInput.value })
+            });
+
+            if (!response.ok) {
+                throw new Error('Error del servidor: ' + response.status);
+            }
+
+            const data = await response.json();
+
+            renderTokens(data.tokens);
+            renderErrors(data.errors);
+            updateStats(data.total_tokens, data.total_errors);
+
+        } catch (error) {
+            consoleBody.innerHTML =
+                '<div class="error-line">' +
+                    '<span class="error-icon">✖</span>' +
+                    '<span>Error de conexión: ' + escapeHtml(error.message) + '</span>' +
+                '</div>';
+        } finally {
+            btnAnalyze.classList.remove('loading');
+            btnAnalyze.disabled = false;
+            editorPanel.classList.remove('analyzing');
+        }
+    }
+
+    // --- Load Example and Auto-Analyze ---
+    function loadExample(exampleCode) {
+        codeInput.value = exampleCode;
+        updateLineNumbers();
+        analyzeCode();
+    }
+
+    // --- Clear Everything ---
+    function clearAll() {
+        codeInput.value = '';
+        updateLineNumbers();
+        tokenTbody.innerHTML = '';
+        emptyState.style.display = 'flex';
+        tokenTable.style.display = 'none';
+        statsBar.style.display = 'none';
+        consoleBody.innerHTML =
+            '<div class="console-empty"><span>✦</span> Esperando análisis...</div>';
+        codeInput.focus();
+    }
+
+    // --- Event Listeners ---
+    btnAnalyze.addEventListener('click', analyzeCode);
+    btnClear.addEventListener('click', clearAll);
+    btnExampleValid.addEventListener('click', function() { loadExample(EXAMPLE_VALID); });
+    btnExampleInvalid.addEventListener('click', function() { loadExample(EXAMPLE_INVALID); });
+
+    // Keyboard shortcut: Ctrl+Enter to analyze
+    codeInput.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            e.preventDefault();
+            analyzeCode();
+        }
+    });
+
+    // Initialize line numbers
+    updateLineNumbers();
+
+})();
+</script>
+
+</body>
+</html>
