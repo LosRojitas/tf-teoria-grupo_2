@@ -905,6 +905,9 @@ body.welcome-active {
 .welcome-continue {
     width: 100%;
     max-width: 380px;
+    margin-left: auto;
+    margin-right: auto;
+    flex: none;
     font-size: 1rem;
     padding: 14px 24px;
     animation: welcome-fade-up 0.55s ease 1.25s both;

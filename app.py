@@ -22,6 +22,7 @@ TOKEN_SPEC = [
     ('STR_LIT',    r'"[^"]*"|\'[^\']*\''),          # Cadenas entre comillas
     ('NUM_FLOAT',  r'\d+\.\d+'),                     # Decimales (antes que enteros)
     ('NUM_INT',    r'\d+'),                           # Enteros
+    
     ('BOOL_LIT',   r'\b(?:true|false)\b'),            # Booleanos
 
     # --- Palabras Reservadas (antes que ID) ---
