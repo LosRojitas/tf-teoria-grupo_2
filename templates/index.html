@@ -8,13 +8,32 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
 </head>
-<body>
+<body class="welcome-active">
 
-<div class="app-container">
+<!-- Pantalla de bienvenida / créditos -->
+<div class="welcome-overlay" id="welcome-overlay" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
+    <div class="welcome-card">
+        <div class="welcome-icon" aria-hidden="true">⚡</div>
+        <h2 class="welcome-title" id="welcome-title">Analizador Léxico</h2>
+        <p class="welcome-lead">Este trabajo fue diseñado y creado por:</p>
+        <ul class="welcome-authors">
+            <li>NAPURI ROJAS, NAIM FARID</li>
+            <li>TORRES REYES, JORDI DIEGO</li>
+            <li>TERREL SANTOS, ANAMILE ARACELY</li>
+            <li>VILLALOBOS PAUCAR, FABRICIO FABIAN</li>
+        </ul>
+        <button class="btn btn-primary welcome-continue" id="welcome-continue" type="button">
+            Continuar y ver el proyecto
+        </button>
+    </div>
+</div>
+
+<div class="app-container" id="app-container">
 
     <!-- ======================== HEADER ======================== -->
     <header class="header" id="app-header">
         <div class="header-icon">⚡</div>
+        <h1>Grupo N° 2</h1>
         <h1>Analizador Léxico</h1>
         <p>Minicompilador de Reglas de Negocio — Tienda Online de Tecnología</p>
         <span class="badge">Primera Versión</span>
@@ -30,7 +49,7 @@
                     <span class="dot green"></span>
                     Editor de Código
                 </div>
-                <span style="font-size:0.75rem; color:var(--text-muted); font-family:'JetBrains Mono',monospace;">source.rule</span>
+                <span style="font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono);">source.rule</span>
             </div>
 
             <div class="editor-wrapper">
@@ -468,6 +487,25 @@ SI stock >= 0 ENTONCES
     // Initialize line numbers
     updateLineNumbers();
 
+})();
+
+// --- Pantalla de bienvenida ---
+(function initWelcome() {
+    const overlay = document.getElementById('welcome-overlay');
+    const continueBtn = document.getElementById('welcome-continue');
+    if (!overlay || !continueBtn) return;
+
+    function closeWelcome() {
+        overlay.classList.add('is-closing');
+        document.body.classList.remove('welcome-active');
+        overlay.addEventListener('transitionend', function onClose(e) {
+            if (e.target !== overlay) return;
+            overlay.classList.add('is-hidden');
+            overlay.removeEventListener('transitionend', onClose);
+        });
+    }
+
+    continueBtn.addEventListener('click', closeWelcome);
 })();
 </script>
 
